@@ -11,6 +11,7 @@ import time
 from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import contextmanager, nullcontext
+from safetensors.torch import load_file
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
@@ -24,10 +25,27 @@ def chunk(it, size):
 
 def load_model_from_config(config, ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
+    
+    if ckpt.endswith('.safetensors'):
+        try:
+            # Safetensors loading
+            pl_sd = load_file(ckpt, device="cpu")
+            # Safetensors format already gives us the state dict directly
+            sd = pl_sd
+            # Safetensors doesn't store metadata like global_step, we need to handle this
+            global_step = 0  # Default value
+        except ImportError:
+            print("Error: safetensors package not found. Please install with 'pip install safetensors'.")
+            sys.exit(1)
+    else:
+        # Original .ckpt loading code
+        pl_sd = torch.load(ckpt, map_location="cpu")
+        # Original format has the state dict nested
+        sd = pl_sd["state_dict"]
+        if "global_step" in pl_sd:
+            global_step = pl_sd["global_step"]
+            print(f"Global Step: {global_step}")
+    
     model = instantiate_from_config(config.model)
     m, u = model.load_state_dict(sd, strict=False)
     if len(m) > 0 and verbose:
@@ -174,8 +192,11 @@ def main():
         choices=["full", "autocast"],
         default="autocast"
     )
-
-
+    parser.add_argument(
+        "--use_safetensors",
+        action='store_true',
+        help="use safetensors format for checkpoint loading/saving",
+    )
     parser.add_argument(
         "--embedding_path", 
         type=str, 
