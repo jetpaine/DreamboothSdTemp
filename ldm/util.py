@@ -3,7 +3,7 @@ import multiprocessing as mp
 from collections import abc
 from inspect import isfunction
 from queue import Queue
-from safetensors import load_file
+from safetensors.torch import load_file
 from threading import Thread
 
 import numpy as np
