@@ -28,17 +28,10 @@ def load_model_from_config(config, ckpt, verbose=False):
     model.eval()
     return model
 
-
+# some comments
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        nargs="?",
-        default="a painting of a virus monster playing guitar",
-        help="the prompt to render"
-    )
 
     parser.add_argument(
         "--outdir",
